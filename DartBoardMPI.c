@@ -3,6 +3,7 @@
 #include <string.h>
 #include <time.h>
 #include <math.h>
+#include <mpi.h>
 
 double estimatePi(double total_throws, double hits, const double factor){
     //Throw thosses
@@ -15,10 +16,13 @@ double estimatePi(double total_throws, double hits, const double factor){
         }
     }
     double Pi_aprox = 4.0 * hits / total_throws;
-    return Pi_aprox;
+    return hits;
 }
 
 int main(int argc, char *argv[]){
+
+    MPI_Init(&argc, &argv);
+
     struct timespec start, end;
     double elapsed_time;
     double k, total_throws, hits;
@@ -30,21 +34,37 @@ int main(int argc, char *argv[]){
         verbose = 1;
     }
 
+    int rank, size;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+
     clock_gettime(CLOCK_MONOTONIC, &start); //Inicia Captura del tiempo
 
     //initialize random generator
     srand((unsigned)time(NULL));
 
-    double aproxPi = estimatePi(total_throws, hits, factor);
+    double local_total_throws = total_throws / size;
+
+
+    double local_hits = 0;
+    local_hits = estimatePi(local_total_throws, local_hits, factor);
+
+    MPI_Reduce(&local_hits, &hits, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 
     clock_gettime(CLOCK_MONOTONIC, &end);
     elapsed_time = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
 
-    if(verbose){
-        printf("Pi aprox: %lf\n", aproxPi);
+    if (rank == 0) {
+        double global_aproxPi = 4.0 * hits / total_throws;
+
+        if (verbose) {
+            printf("Pi approx: %lf\n", global_aproxPi);
+        }
+
+        printf("Time: %f seconds\n", elapsed_time);
     }
 
-    printf(" %f\n", elapsed_time);
-
+    
+    MPI_Finalize();
     return 0;
 }

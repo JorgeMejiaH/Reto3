@@ -1,16 +1,15 @@
-#serial processing
-#!/bin/bash
-
-echo "Dart Board Serial test in progress..."
-echo "Number;Time" > DartBoardSerial.csv
+echo "Thread test in progress..."
+echo "Size;Process;Time" > DartBoardMPI.csv
 
 for i in {1..10}; do
     echo "Running iteration $i"
-    for j in 100000 1000000 10000000 100000000 1000000000 10000000000; do
-        result=$(./DartBoardS $j)
-        echo "$j;$result" >> DartBoardSerial.csv
+    for t in 2 4 8 16 32; do
+        for j in 100000 1000000 10000000 100000000 1000000000 10000000000; do
+            result=$(mpirun -np $t -hostfile workers ./DartBoardMPI $j)
+            echo "$j;$t;$result" >> DartBoardMPI.csv
+        done
     done
 done
 
-echo "" >> 'DartBoardSerial.csv'
+echo "" >> 'DartBoardMPI.csv'
 echo "done"
