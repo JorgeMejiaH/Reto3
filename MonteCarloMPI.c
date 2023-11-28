@@ -3,6 +3,7 @@
 #include <math.h>
 #include <time.h>
 #include <string.h>
+#include <mpi.h>
 
 double estimate_pi(long total_drops, double needle_length, double line_spacing) {
     long crosses = 0;
@@ -21,10 +22,13 @@ double estimate_pi(long total_drops, double needle_length, double line_spacing) 
 
     // Estimar π
     double pi_estimate = ((2 * needle_length) / (probability * line_spacing)) / 2;
-    return pi_estimate;
+    return crosses;
 }
 
 int main(int argc, char *argv[]) {
+
+    MPI_Init(&argc, &argv);
+
     srand((unsigned)time(NULL));  // Inicializar generador de números aleatorios
 
     struct timespec start, end;
@@ -33,23 +37,41 @@ int main(int argc, char *argv[]) {
     double needle_length = 1.0;  // Longitud de la aguja
     double line_spacing = 2.0;   // Espaciado entre las líneas
     int verbose = 0;
+    double crosses = 0;
 
     if (argc > 2 && strcmp(argv[2], "-v") == 0) {//comando verbose
         verbose = 1;
     }
 
+    int rank, size;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+
     clock_gettime(CLOCK_MONOTONIC, &start); //Inicia Captura del tiempo
 
-    double pi_estimate = estimate_pi(total_drops, needle_length, line_spacing);
+    double local_total_drops = total_drops / size;
 
-    if(verbose){
-            printf("%lf\n", pi_estimate);
-    }
+    double local_crosses = 0;
+
+    local_crosses = estimate_pi(local_total_drops, needle_length, line_spacing);
+    MPI_Reduce(&local_crosses, &crosses, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 
     clock_gettime(CLOCK_MONOTONIC, &end);
     elapsed_time = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
 
-    printf(" %f\n", elapsed_time);
+    if (rank == 0) {
+        double probability = (double)crosses / total_drops;
+        double global_aproxPi = ((2 * needle_length) / (probability * line_spacing)) / 2;
+
+        if (verbose) {
+            printf("Pi approx: %lf\n", global_aproxPi);
+        }
+
+        printf("%f\n",elapsed_time);
+    }
+
+    
+    MPI_Finalize();
 
     return 0;
 }

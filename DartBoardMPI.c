@@ -61,7 +61,7 @@ int main(int argc, char *argv[]){
             printf("Pi approx: %lf\n", global_aproxPi);
         }
 
-        printf("Time: %f seconds\n", elapsed_time);
+        printf(elapsed_time);
     }
 
     
